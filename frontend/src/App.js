@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import Navbar from './components/Navbar';
 import Register from './pages/Register';
 import Livros from './pages/Livros';
+import Categorias from './pages/Categorias';
 
 const theme = createTheme({
     palette: {
@@ -59,6 +60,14 @@ function App() {
                         }
                     />
                     <Route path="/" element={<Navigate to="/dashboard" />} />
+                    <Route
+                        path="/categorias"
+                        element={
+                            <PrivateRoute>
+                                <Categorias />
+                            </PrivateRoute>
+                        }
+                    />
                 </Routes>
             </BrowserRouter>
         </ThemeProvider>

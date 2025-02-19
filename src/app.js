@@ -8,6 +8,9 @@ const emprestimoRoutes = require('./routes/emprestimoRoutes');
 const usuarioRoutes = require('./routes/usuarioRoutes');
 const favoritoRoutes = require('./routes/favoritoRoutes');
 const resenhaRoutes = require('./routes/resenhaRoutes');
+const relatorioRoutes = require('./routes/relatorioRoutes');
+const authRoutes = require('./routes/authRoutes');
+const verificarToken = require('./middleware/authMiddleware');
 
 const app = express();
 
@@ -23,7 +26,19 @@ const swaggerOptions = {
             {
                 url: 'http://localhost:3000'
             }
-        ]
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT'
+                }
+            }
+        },
+        security: [{
+            bearerAuth: []
+        }]
     },
     apis: ['./src/routes/*.js']
 };
@@ -37,8 +52,18 @@ app.use('/api/livros', livroRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/emprestimos', emprestimoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/auth', authRoutes);
+
+// Proteger todas as outras rotas
+app.use('/api/livros', verificarToken, livroRoutes);
+app.use('/api/categorias', verificarToken, categoriaRoutes);
+app.use('/api/emprestimos', verificarToken, emprestimoRoutes);
+app.use('/api/favoritos', verificarToken, favoritoRoutes);
+app.use('/api/resenhas', verificarToken, resenhaRoutes);
+app.use('/api/relatorios', verificarToken, relatorioRoutes);
 app.use('/api/favoritos', favoritoRoutes);
 app.use('/api/resenhas', resenhaRoutes);
+app.use('/api/relatorios', relatorioRoutes);
 
 // Set up Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

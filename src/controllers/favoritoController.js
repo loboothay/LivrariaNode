@@ -1,4 +1,5 @@
-const db = require('../config/firebase');
+const { db } = require('../config/firebase');
+const { collection, doc, getDoc, getDocs, addDoc, deleteDoc, query, where } = require('firebase/firestore');
 
 class FavoritoController {
     static async adicionarFavorito(req, res) {
@@ -6,18 +7,20 @@ class FavoritoController {
             const { usuarioId, livroId } = req.body;
 
             // Verificar se o usuário existe
-            const usuarioRef = await db.collection('usuarios').doc(usuarioId).get();
-            if (!usuarioRef.exists) {
+            const usuarioRef = doc(db, 'usuarios', usuarioId);
+            const usuarioSnap = await getDoc(usuarioRef);
+            if (!usuarioSnap.exists()) {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
             // Verificar se o livro existe
-            const livroRef = await db.collection('livros').doc(livroId).get();
-            if (!livroRef.exists) {
+            const livroRef = doc(db, 'livros', livroId);
+            const livroSnap = await getDoc(livroRef);
+            if (!livroSnap.exists()) {
                 return res.status(404).json({ erro: 'Livro não encontrado' });
             }
 
-            const livroData = livroRef.data();
+            const livroData = livroSnap.data();
             const favorito = {
                 usuarioId,
                 livroId,
@@ -26,7 +29,8 @@ class FavoritoController {
                 criadoEm: new Date()
             };
 
-            const docRef = await db.collection('favoritos').add(favorito);
+            const favoritosRef = collection(db, 'favoritos');
+            const docRef = await addDoc(favoritosRef, favorito);
             res.status(201).json({ id: docRef.id, ...favorito });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -37,16 +41,20 @@ class FavoritoController {
         try {
             const { usuarioId, livroId } = req.params;
             
-            const favoritosRef = await db.collection('favoritos')
-                .where('usuarioId', '==', usuarioId)
-                .where('livroId', '==', livroId)
-                .get();
+            const favoritosRef = collection(db, 'favoritos');
+            const q = query(
+                favoritosRef,
+                where('usuarioId', '==', usuarioId),
+                where('livroId', '==', livroId)
+            );
+            const querySnapshot = await getDocs(q);
 
-            if (favoritosRef.empty) {
+            if (querySnapshot.empty) {
                 return res.status(404).json({ erro: 'Favorito não encontrado' });
             }
 
-            await db.collection('favoritos').doc(favoritosRef.docs[0].id).delete();
+            const docRef = doc(db, 'favoritos', querySnapshot.docs[0].id);
+            await deleteDoc(docRef);
             res.json({ mensagem: 'Livro removido dos favoritos com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -57,32 +65,15 @@ class FavoritoController {
         try {
             const { usuarioId } = req.params;
             
-            // Verify if user exists
-            const userRef = await db.collection('usuarios').doc(usuarioId).get();
-            if (!userRef.exists) {
-                return res.status(404).json({ erro: 'Usuário não encontrado' });
-            }
-        
-            const favoritosSnapshot = await db.collection('favoritos')
-                .where('usuarioId', '==', usuarioId)
-                .get();
-        
-            if (favoritosSnapshot.empty) {
-                return res.json([]);
-            }
-        
+            const favoritosRef = collection(db, 'favoritos');
+            const q = query(favoritosRef, where('usuarioId', '==', usuarioId));
+            const querySnapshot = await getDocs(q);
+
             const favoritos = [];
-            for (const doc of favoritosSnapshot.docs) {
-                const favoritoData = doc.data();
-                const livroRef = await db.collection('livros').doc(favoritoData.livroId).get();
-                
-                favoritos.push({
-                    id: doc.id,
-                    ...favoritoData,
-                    livro: livroRef.exists ? livroRef.data() : null
-                });
-            }
-        
+            querySnapshot.forEach(doc => {
+                favoritos.push({ id: doc.id, ...doc.data() });
+            });
+
             res.json(favoritos);
         } catch (error) {
             res.status(500).json({ erro: error.message });

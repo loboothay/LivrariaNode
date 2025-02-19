@@ -1,4 +1,5 @@
-const db = require('../config/firebase');
+const { db } = require('../config/firebase');
+const { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query } = require('firebase/firestore');
 
 class CategoriaController {
     static async criarCategoria(req, res) {
@@ -10,8 +11,10 @@ class CategoriaController {
                 criadoEm: new Date()
             };
 
-            const docRef = await db.collection('categorias').add(categoria);
-            res.status(201).json({ id: docRef.id, ...categoria });
+            const categoriaRef = doc(collection(db, 'categorias'));
+            await setDoc(categoriaRef, categoria);
+
+            res.status(201).json({ id: categoriaRef.id, ...categoria });
         } catch (error) {
             res.status(500).json({ erro: error.message });
         }
@@ -19,11 +22,14 @@ class CategoriaController {
 
     static async buscarTodasCategorias(req, res) {
         try {
-            const categoriasSnapshot = await db.collection('categorias').get();
+            const categoriasRef = collection(db, 'categorias');
+            const querySnapshot = await getDocs(categoriasRef);
+            
             const categorias = [];
-            categoriasSnapshot.forEach(doc => {
+            querySnapshot.forEach(doc => {
                 categorias.push({ id: doc.id, ...doc.data() });
             });
+
             res.json(categorias);
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -32,11 +38,14 @@ class CategoriaController {
 
     static async buscarCategoriaPorId(req, res) {
         try {
-            const doc = await db.collection('categorias').doc(req.params.id).get();
-            if (!doc.exists) {
+            const docRef = doc(db, 'categorias', req.params.id);
+            const docSnap = await getDoc(docRef);
+
+            if (!docSnap.exists()) {
                 return res.status(404).json({ erro: 'Categoria não encontrada' });
             }
-            res.json({ id: doc.id, ...doc.data() });
+
+            res.json({ id: docSnap.id, ...docSnap.data() });
         } catch (error) {
             res.status(500).json({ erro: error.message });
         }
@@ -45,11 +54,14 @@ class CategoriaController {
     static async atualizarCategoria(req, res) {
         try {
             const { nome, descricao } = req.body;
-            await db.collection('categorias').doc(req.params.id).update({
+            const docRef = doc(db, 'categorias', req.params.id);
+            
+            await updateDoc(docRef, {
                 nome,
                 descricao,
                 atualizadoEm: new Date()
             });
+
             res.json({ mensagem: 'Categoria atualizada com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -58,7 +70,9 @@ class CategoriaController {
 
     static async deletarCategoria(req, res) {
         try {
-            await db.collection('categorias').doc(req.params.id).delete();
+            const docRef = doc(db, 'categorias', req.params.id);
+            await deleteDoc(docRef);
+            
             res.json({ mensagem: 'Categoria deletada com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });

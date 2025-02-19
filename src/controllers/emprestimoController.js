@@ -1,4 +1,5 @@
-const db = require('../config/firebase');
+const { db } = require('../config/firebase');
+const { collection, doc, getDoc, getDocs, setDoc, updateDoc, query, where, addDoc, orderBy } = require('firebase/firestore');
 
 class EmprestimoController {
     static async registrarEmprestimo(req, res) {
@@ -6,20 +7,21 @@ class EmprestimoController {
             const { livroId, usuarioId, dataEmprestimo } = req.body;
 
             // Verificar se o usuário existe
-            const usuarioRef = await db.collection('usuarios').doc(usuarioId).get();
-            if (!usuarioRef.exists) {
+            const usuarioRef = doc(db, 'usuarios', usuarioId);
+            const usuarioSnap = await getDoc(usuarioRef);
+            if (!usuarioSnap.exists()) {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
             // Verificar se o livro existe e tem quantidade disponível
-            const livroRef = db.collection('livros').doc(livroId);
-            const livro = await livroRef.get();
+            const livroRef = doc(db, 'livros', livroId);
+            const livroSnap = await getDoc(livroRef);
 
-            if (!livro.exists) {
+            if (!livroSnap.exists()) {
                 return res.status(404).json({ erro: 'Livro não encontrado' });
             }
 
-            const livroData = livro.data();
+            const livroData = livroSnap.data();
             if (livroData.quantidade <= 0) {
                 return res.status(400).json({ erro: 'Livro não disponível para empréstimo' });
             }
@@ -29,18 +31,19 @@ class EmprestimoController {
                 livroId,
                 livroTitulo: livroData.titulo,
                 usuarioId,
-                usuarioNome: usuarioRef.data().nome,
+                usuarioNome: usuarioSnap.data().nome,
                 dataEmprestimo: dataEmprestimo || new Date(),
                 status: 'ativo',
                 criadoEm: new Date()
             };
 
             // Atualizar quantidade do livro
-            await livroRef.update({
+            await updateDoc(livroRef, {
                 quantidade: livroData.quantidade - 1
             });
 
-            const docRef = await db.collection('emprestimos').add(emprestimo);
+            const emprestimosRef = collection(db, 'emprestimos');
+            const docRef = await addDoc(emprestimosRef, emprestimo);
             res.status(201).json({ id: docRef.id, ...emprestimo });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -50,27 +53,28 @@ class EmprestimoController {
     static async registrarDevolucao(req, res) {
         try {
             const { emprestimoId } = req.params;
-            const emprestimoRef = db.collection('emprestimos').doc(emprestimoId);
-            const emprestimo = await emprestimoRef.get();
+            const emprestimoRef = doc(db, 'emprestimos', emprestimoId);
+            const emprestimoSnap = await getDoc(emprestimoRef);
 
-            if (!emprestimo.exists) {
+            if (!emprestimoSnap.exists()) {
                 return res.status(404).json({ erro: 'Empréstimo não encontrado' });
             }
 
-            if (emprestimo.data().status === 'devolvido') {
+            const emprestimoData = emprestimoSnap.data();
+            if (emprestimoData.status === 'devolvido') {
                 return res.status(400).json({ erro: 'Livro já foi devolvido' });
             }
 
             // Atualizar quantidade do livro
-            const livroRef = db.collection('livros').doc(emprestimo.data().livroId);
-            const livro = await livroRef.get();
+            const livroRef = doc(db, 'livros', emprestimoData.livroId);
+            const livroSnap = await getDoc(livroRef);
             
-            await livroRef.update({
-                quantidade: livro.data().quantidade + 1
+            await updateDoc(livroRef, {
+                quantidade: livroSnap.data().quantidade + 1
             });
 
             // Atualizar status do empréstimo
-            await emprestimoRef.update({
+            await updateDoc(emprestimoRef, {
                 status: 'devolvido',
                 dataDevolucao: new Date()
             });
@@ -83,12 +87,12 @@ class EmprestimoController {
 
     static async listarEmprestimosAtivos(req, res) {
         try {
-            const emprestimosSnapshot = await db.collection('emprestimos')
-                .where('status', '==', 'ativo')
-                .get();
+            const emprestimosRef = collection(db, 'emprestimos');
+            const q = query(emprestimosRef, where('status', '==', 'ativo'));
+            const querySnapshot = await getDocs(q);
 
             const emprestimos = [];
-            emprestimosSnapshot.forEach(doc => {
+            querySnapshot.forEach(doc => {
                 emprestimos.push({ id: doc.id, ...doc.data() });
             });
 
@@ -101,13 +105,16 @@ class EmprestimoController {
     static async listarHistoricoUsuario(req, res) {
         try {
             const { usuarioId } = req.params;
-            const emprestimosSnapshot = await db.collection('emprestimos')
-                .where('usuarioId', '==', usuarioId)
-                .orderBy('criadoEm', 'desc')
-                .get();
+            const emprestimosRef = collection(db, 'emprestimos');
+            // Removed orderBy to avoid requiring composite index
+            const q = query(
+                emprestimosRef, 
+                where('usuarioId', '==', usuarioId)
+            );
+            const querySnapshot = await getDocs(q);
 
             const emprestimos = [];
-            emprestimosSnapshot.forEach(doc => {
+            querySnapshot.forEach(doc => {
                 emprestimos.push({ id: doc.id, ...doc.data() });
             });
 

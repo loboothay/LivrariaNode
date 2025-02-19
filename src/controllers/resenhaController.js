@@ -1,4 +1,5 @@
-const db = require('../config/firebase');
+const { db } = require('../config/firebase');
+const { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where } = require('firebase/firestore');
 
 class ResenhaController {
     static async adicionarResenha(req, res) {
@@ -6,28 +7,31 @@ class ResenhaController {
             const { livroId, usuarioId, texto, avaliacao } = req.body;
 
             // Verificar se o livro existe
-            const livroRef = await db.collection('livros').doc(livroId).get();
-            if (!livroRef.exists) {
+            const livroRef = doc(db, 'livros', livroId);
+            const livroSnap = await getDoc(livroRef);
+            if (!livroSnap.exists()) {
                 return res.status(404).json({ erro: 'Livro não encontrado' });
             }
 
             // Verificar se o usuário existe
-            const usuarioRef = await db.collection('usuarios').doc(usuarioId).get();
-            if (!usuarioRef.exists) {
+            const usuarioRef = doc(db, 'usuarios', usuarioId);
+            const usuarioSnap = await getDoc(usuarioRef);
+            if (!usuarioSnap.exists()) {
                 return res.status(404).json({ erro: 'Usuário não encontrado' });
             }
 
             const resenha = {
                 livroId,
-                livroTitulo: livroRef.data().titulo,
+                livroTitulo: livroSnap.data().titulo,
                 usuarioId,
-                usuarioNome: usuarioRef.data().nome,
+                usuarioNome: usuarioSnap.data().nome,
                 texto,
                 avaliacao,
                 criadoEm: new Date()
             };
 
-            const docRef = await db.collection('resenhas').add(resenha);
+            const resenhasRef = collection(db, 'resenhas');
+            const docRef = await addDoc(resenhasRef, resenha);
             res.status(201).json({ id: docRef.id, ...resenha });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -37,14 +41,12 @@ class ResenhaController {
     static async listarResenhasLivro(req, res) {
         try {
             const { livroId } = req.params;
-
-            // Removed orderBy to avoid requiring composite index
-            const resenhasSnapshot = await db.collection('resenhas')
-                .where('livroId', '==', livroId)
-                .get();
+            const resenhasRef = collection(db, 'resenhas');
+            const q = query(resenhasRef, where('livroId', '==', livroId));
+            const querySnapshot = await getDocs(q);
 
             const resenhas = [];
-            resenhasSnapshot.forEach(doc => {
+            querySnapshot.forEach(doc => {
                 resenhas.push({ id: doc.id, ...doc.data() });
             });
 
@@ -60,17 +62,18 @@ class ResenhaController {
             const { texto, avaliacao } = req.body;
             const usuarioId = req.body.usuarioId;
 
-            const resenhaRef = await db.collection('resenhas').doc(id).get();
-            if (!resenhaRef.exists) {
+            const resenhaRef = doc(db, 'resenhas', id);
+            const resenhaSnap = await getDoc(resenhaRef);
+
+            if (!resenhaSnap.exists()) {
                 return res.status(404).json({ erro: 'Resenha não encontrada' });
             }
 
-            // Verificar se o usuário é o autor da resenha
-            if (resenhaRef.data().usuarioId !== usuarioId) {
+            if (resenhaSnap.data().usuarioId !== usuarioId) {
                 return res.status(403).json({ erro: 'Não autorizado a editar esta resenha' });
             }
 
-            await db.collection('resenhas').doc(id).update({
+            await updateDoc(resenhaRef, {
                 texto,
                 avaliacao,
                 atualizadoEm: new Date()
@@ -87,17 +90,18 @@ class ResenhaController {
             const { id } = req.params;
             const usuarioId = req.body.usuarioId;
 
-            const resenhaRef = await db.collection('resenhas').doc(id).get();
-            if (!resenhaRef.exists) {
+            const resenhaRef = doc(db, 'resenhas', id);
+            const resenhaSnap = await getDoc(resenhaRef);
+
+            if (!resenhaSnap.exists()) {
                 return res.status(404).json({ erro: 'Resenha não encontrada' });
             }
 
-            // Verificar se o usuário é o autor da resenha
-            if (resenhaRef.data().usuarioId !== usuarioId) {
+            if (resenhaSnap.data().usuarioId !== usuarioId) {
                 return res.status(403).json({ erro: 'Não autorizado a deletar esta resenha' });
             }
 
-            await db.collection('resenhas').doc(id).delete();
+            await deleteDoc(resenhaRef);
             res.json({ mensagem: 'Resenha deletada com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });

@@ -1,4 +1,5 @@
-const db = require('../config/firebase');
+const { db } = require('../config/firebase');
+const { collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc } = require('firebase/firestore');
 
 class LivroController {
     static async criarLivro(req, res) {
@@ -6,8 +7,9 @@ class LivroController {
             const { titulo, autor, isbn, preco, quantidade, categoriaId } = req.body;
             
             // Verify if category exists
-            const categoriaRef = await db.collection('categorias').doc(categoriaId).get();
-            if (!categoriaRef.exists) {
+            const categoriaRef = doc(db, 'categorias', categoriaId);
+            const categoriaSnap = await getDoc(categoriaRef);
+            if (!categoriaSnap.exists()) {
                 return res.status(404).json({ erro: 'Categoria não encontrada' });
             }
 
@@ -18,11 +20,12 @@ class LivroController {
                 preco,
                 quantidade,
                 categoriaId,
-                categoriaName: categoriaRef.data().nome,
+                categoriaName: categoriaSnap.data().nome,
                 criadoEm: new Date()
             };
 
-            const docRef = await db.collection('livros').add(livro);
+            const livrosRef = collection(db, 'livros');
+            const docRef = await addDoc(livrosRef, livro);
             res.status(201).json({ id: docRef.id, ...livro });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -31,9 +34,10 @@ class LivroController {
 
     static async buscarTodosLivros(req, res) {
         try {
-            const livrosSnapshot = await db.collection('livros').get();
+            const livrosRef = collection(db, 'livros');
+            const querySnapshot = await getDocs(livrosRef);
             const livros = [];
-            livrosSnapshot.forEach(doc => {
+            querySnapshot.forEach(doc => {
                 livros.push({ id: doc.id, ...doc.data() });
             });
             res.json(livros);
@@ -46,15 +50,7 @@ class LivroController {
         try {
             const { titulo, autor, isbn, preco, quantidade, categoriaId } = req.body;
             
-            // Verify if category exists when updating category
-            if (categoriaId) {
-                const categoriaRef = await db.collection('categorias').doc(categoriaId).get();
-                if (!categoriaRef.exists) {
-                    return res.status(404).json({ erro: 'Categoria não encontrada' });
-                }
-            }
-
-            const updateData = {
+            let updateData = {
                 titulo,
                 autor,
                 isbn,
@@ -63,12 +59,19 @@ class LivroController {
                 atualizadoEm: new Date()
             };
 
+            // Verify if category exists when updating category
             if (categoriaId) {
+                const categoriaRef = doc(db, 'categorias', categoriaId);
+                const categoriaSnap = await getDoc(categoriaRef);
+                if (!categoriaSnap.exists()) {
+                    return res.status(404).json({ erro: 'Categoria não encontrada' });
+                }
                 updateData.categoriaId = categoriaId;
-                updateData.categoriaName = categoriaRef.data().nome;
+                updateData.categoriaName = categoriaSnap.data().nome;
             }
 
-            await db.collection('livros').doc(req.params.id).update(updateData);
+            const livroRef = doc(db, 'livros', req.params.id);
+            await updateDoc(livroRef, updateData);
             res.json({ mensagem: 'Livro atualizado com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });
@@ -77,11 +80,12 @@ class LivroController {
 
     static async buscarLivroPorId(req, res) {
         try {
-            const doc = await db.collection('livros').doc(req.params.id).get();
-            if (!doc.exists) {
+            const livroRef = doc(db, 'livros', req.params.id);
+            const docSnap = await getDoc(livroRef);
+            if (!docSnap.exists()) {
                 return res.status(404).json({ erro: 'Livro não encontrado' });
             }
-            res.json({ id: doc.id, ...doc.data() });
+            res.json({ id: docSnap.id, ...docSnap.data() });
         } catch (error) {
             res.status(500).json({ erro: error.message });
         }
@@ -89,7 +93,8 @@ class LivroController {
 
     static async deletarLivro(req, res) {
         try {
-            await db.collection('livros').doc(req.params.id).delete();
+            const livroRef = doc(db, 'livros', req.params.id);
+            await deleteDoc(livroRef);
             res.json({ mensagem: 'Livro deletado com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });

@@ -11,6 +11,7 @@ import Navbar from './components/Navbar';
 import Register from './pages/Register';
 import Livros from './pages/Livros';
 import Categorias from './pages/Categorias';
+import Emprestimos from './pages/Emprestimos';
 
 const theme = createTheme({
     palette: {
@@ -65,6 +66,14 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Categorias />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/emprestimos"
+                        element={
+                            <PrivateRoute>
+                                <Emprestimos />
                             </PrivateRoute>
                         }
                     />

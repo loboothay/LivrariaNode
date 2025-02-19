@@ -6,6 +6,7 @@ const livroRoutes = require('./routes/livroRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
 const emprestimoRoutes = require('./routes/emprestimoRoutes');
 const usuarioRoutes = require('./routes/usuarioRoutes');
+const favoritoRoutes = require('./routes/favoritoRoutes');
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/livros', livroRoutes);
 app.use('/api/categorias', categoriaRoutes);
 app.use('/api/emprestimos', emprestimoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
+app.use('/api/favoritos', favoritoRoutes);
 
 // Set up Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

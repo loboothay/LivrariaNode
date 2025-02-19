@@ -3,13 +3,22 @@ const db = require('../config/firebase');
 class LivroController {
     static async criarLivro(req, res) {
         try {
-            const { titulo, autor, isbn, preco, quantidade } = req.body;
+            const { titulo, autor, isbn, preco, quantidade, categoriaId } = req.body;
+            
+            // Verify if category exists
+            const categoriaRef = await db.collection('categorias').doc(categoriaId).get();
+            if (!categoriaRef.exists) {
+                return res.status(404).json({ erro: 'Categoria não encontrada' });
+            }
+
             const livro = {
                 titulo,
                 autor,
                 isbn,
                 preco,
                 quantidade,
+                categoriaId,
+                categoriaName: categoriaRef.data().nome,
                 criadoEm: new Date()
             };
 
@@ -33,6 +42,39 @@ class LivroController {
         }
     }
 
+    static async atualizarLivro(req, res) {
+        try {
+            const { titulo, autor, isbn, preco, quantidade, categoriaId } = req.body;
+            
+            // Verify if category exists when updating category
+            if (categoriaId) {
+                const categoriaRef = await db.collection('categorias').doc(categoriaId).get();
+                if (!categoriaRef.exists) {
+                    return res.status(404).json({ erro: 'Categoria não encontrada' });
+                }
+            }
+
+            const updateData = {
+                titulo,
+                autor,
+                isbn,
+                preco,
+                quantidade,
+                atualizadoEm: new Date()
+            };
+
+            if (categoriaId) {
+                updateData.categoriaId = categoriaId;
+                updateData.categoriaName = categoriaRef.data().nome;
+            }
+
+            await db.collection('livros').doc(req.params.id).update(updateData);
+            res.json({ mensagem: 'Livro atualizado com sucesso' });
+        } catch (error) {
+            res.status(500).json({ erro: error.message });
+        }
+    }
+
     static async buscarLivroPorId(req, res) {
         try {
             const doc = await db.collection('livros').doc(req.params.id).get();
@@ -40,23 +82,6 @@ class LivroController {
                 return res.status(404).json({ erro: 'Livro não encontrado' });
             }
             res.json({ id: doc.id, ...doc.data() });
-        } catch (error) {
-            res.status(500).json({ erro: error.message });
-        }
-    }
-
-    static async atualizarLivro(req, res) {
-        try {
-            const { titulo, autor, isbn, preco, quantidade } = req.body;
-            await db.collection('livros').doc(req.params.id).update({
-                titulo,
-                autor,
-                isbn,
-                preco,
-                quantidade,
-                atualizadoEm: new Date()
-            });
-            res.json({ mensagem: 'Livro atualizado com sucesso' });
         } catch (error) {
             res.status(500).json({ erro: error.message });
         }

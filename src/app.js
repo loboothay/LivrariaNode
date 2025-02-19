@@ -1,8 +1,9 @@
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerJsdoc = require('swagger-jsdoc');
-const livroRoutes = require('./routes/livroRoutes');
 const cors = require('cors');
+const livroRoutes = require('./routes/livroRoutes');
+const categoriaRoutes = require('./routes/categoriaRoutes');
 
 const app = express();
 
@@ -29,6 +30,7 @@ const swaggerDocs = swaggerJsdoc(swaggerOptions);
 app.use(cors());
 app.use(express.json());
 app.use('/api/livros', livroRoutes);
+app.use('/api/categorias', categoriaRoutes);
 
 // Set up Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

@@ -12,6 +12,7 @@ const LivroController = require('../controllers/livroController');
  *         - titulo
  *         - autor
  *         - isbn
+ *         - categoriaId
  *       properties:
  *         titulo:
  *           type: string
@@ -28,6 +29,9 @@ const LivroController = require('../controllers/livroController');
  *         quantidade:
  *           type: integer
  *           description: Quantidade em estoque
+ *         categoriaId:
+ *           type: string
+ *           description: ID da categoria do livro
  */
 
 /**

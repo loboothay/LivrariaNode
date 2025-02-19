@@ -4,6 +4,8 @@ const swaggerJsdoc = require('swagger-jsdoc');
 const cors = require('cors');
 const livroRoutes = require('./routes/livroRoutes');
 const categoriaRoutes = require('./routes/categoriaRoutes');
+const emprestimoRoutes = require('./routes/emprestimoRoutes');
+const usuarioRoutes = require('./routes/usuarioRoutes');
 
 const app = express();
 
@@ -31,6 +33,8 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/livros', livroRoutes);
 app.use('/api/categorias', categoriaRoutes);
+app.use('/api/emprestimos', emprestimoRoutes);
+app.use('/api/usuarios', usuarioRoutes);
 
 // Set up Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));

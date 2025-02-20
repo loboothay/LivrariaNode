@@ -12,6 +12,9 @@ import Register from './pages/Register';
 import Livros from './pages/Livros';
 import Categorias from './pages/Categorias';
 import Emprestimos from './pages/Emprestimos';
+import Resenhas from './pages/Resenhas';
+import Favoritos from './pages/Favoritos';
+import Relatorios from './pages/Relatorios';
 
 const theme = createTheme({
     palette: {
@@ -74,6 +77,30 @@ function App() {
                         element={
                             <PrivateRoute>
                                 <Emprestimos />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/resenhas"
+                        element={
+                            <PrivateRoute>
+                                <Resenhas />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/favoritos"
+                        element={
+                            <PrivateRoute>
+                                <Favoritos />
+                            </PrivateRoute>
+                        }
+                    />
+                    <Route
+                        path="/relatorios"
+                        element={
+                            <PrivateRoute>
+                                <Relatorios />
                             </PrivateRoute>
                         }
                     />

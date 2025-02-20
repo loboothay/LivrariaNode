@@ -12,6 +12,8 @@ import {
     MenuItem // Adicionado MenuItem aos imports
 } from '@mui/material';
 import axios from 'axios';
+import { Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
+import { IconButton } from '@mui/material';
 
 function Resenhas() {
     const [resenhas, setResenhas] = useState([]);
@@ -22,6 +24,7 @@ function Resenhas() {
         texto: '',
         avaliacao: 0
     });
+    const [editingResenha, setEditingResenha] = useState(null);
 
     useEffect(() => {
         const fetchLivros = async () => {
@@ -100,10 +103,9 @@ function Resenhas() {
                 alert('Por favor, preencha todos os campos');
                 return;
             }
-    
+            
             const token = localStorage.getItem('token');
             
-            // Debug dos dados do usuário
             console.log('Usuário logado:', usuarioLogado);
             
             if (!usuarioLogado || !usuarioLogado.id) {
@@ -111,22 +113,22 @@ function Resenhas() {
                 alert('Erro: Dados do usuário não disponíveis. Por favor, faça login novamente.');
                 return;
             }
-    
+            
             const resenhaData = {
                 livroId: novaResenha.livroId,
                 usuarioId: usuarioLogado.id,
                 texto: novaResenha.texto.trim(),
                 avaliacao: novaResenha.avaliacao
             };
-    
+            
             console.log('Enviando resenha:', resenhaData);
-    
+            
             const response = await axios.post('http://localhost:3000/api/resenhas', resenhaData, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-    
+            
             console.log('Resposta:', response.data);
             
             setNovaResenha({ livroId: '', texto: '', avaliacao: 0 });
@@ -139,23 +141,72 @@ function Resenhas() {
         }
     };
 
+    const handleDelete = async (id) => {
+        if (window.confirm('Tem certeza que deseja deletar esta resenha?')) {
+            try {
+                const token = localStorage.getItem('token');
+                const resenha = resenhas.find(r => r.id === id);
+                
+                console.log('Tentando deletar resenha:', {
+                    resenhaId: id,
+                    resenhaUsuarioId: resenha.usuarioId,
+                    usuarioLogadoId: usuarioLogado.id,
+                    resenhaCompleta: resenha
+                });
+
+                await axios.delete(`http://localhost:3000/api/resenhas/${id}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    data: {
+                        usuarioId: usuarioLogado.id
+                    }
+                });
+                
+                if (livroSelecionado) {
+                    carregarResenhas(livroSelecionado);
+                }
+            } catch (error) {
+                console.error('Erro ao deletar resenha:', error);
+                alert('Você não tem permissão para deletar esta resenha');
+            }
+        }
+    };
+
+    const handleEdit = async (e) => {
+        e.preventDefault();
+        try {
+            const token = localStorage.getItem('token');
+            await axios.put(`http://localhost:3000/api/resenhas/${editingResenha.id}`, {
+                texto: editingResenha.texto,
+                avaliacao: editingResenha.avaliacao,
+                livroId: editingResenha.livroId,
+                usuarioId: usuarioLogado.id
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            setEditingResenha(null);
+            if (livroSelecionado) {
+                carregarResenhas(livroSelecionado);
+            }
+        } catch (error) {
+            console.error('Erro ao atualizar resenha:', error);
+            alert('Erro ao atualizar resenha');
+        }
+    };
+
     const handleLivroChange = (e) => {
         const livroId = e.target.value;
         setLivroSelecionado(livroId);
         setNovaResenha({ ...novaResenha, livroId });
+        if (livroId) {
+            carregarResenhas(livroId);
+        }
     };
 
-    // REMOVER esta segunda declaração do handleSubmit (linhas 89-100)
-    // const handleSubmit = async (e) => {
-    //     e.preventDefault();
-    //     try {
-    //         await axios.post('http://localhost:3001/api/resenhas', novaResenha);
-    //         setNovaResenha({ livroId: '', texto: '', avaliacao: 0 });
-    //         carregarResenhas();
-    //     } catch (error) {
-    //         console.error('Erro ao adicionar resenha:', error);
-    //     }
-    // };
     return (
         <Container maxWidth="lg" sx={{ mt: 4 }}>
             <Typography variant="h4" gutterBottom>
@@ -225,9 +276,56 @@ function Resenhas() {
                                         {livros.find(l => l.id === resenha.livroId)?.titulo}
                                     </Typography>
                                     <Rating value={resenha.avaliacao} readOnly />
-                                    <Typography variant="body1" sx={{ mt: 2 }}>
-                                        {resenha.texto}
-                                    </Typography>
+                                    {editingResenha?.id === resenha.id ? (
+                                        <Box component="form" onSubmit={handleEdit}>
+                                            <TextField
+                                                fullWidth
+                                                multiline
+                                                rows={4}
+                                                value={editingResenha.texto}
+                                                onChange={(e) => setEditingResenha({
+                                                    ...editingResenha,
+                                                    texto: e.target.value
+                                                })}
+                                                sx={{ mt: 2, mb: 2 }}
+                                            />
+                                            <Rating
+                                                value={editingResenha.avaliacao}
+                                                onChange={(_, newValue) => setEditingResenha({
+                                                    ...editingResenha,
+                                                    avaliacao: newValue
+                                                })}
+                                            />
+                                            <Box sx={{ mt: 2 }}>
+                                                <Button type="submit" variant="contained" sx={{ mr: 1 }}>
+                                                    Salvar
+                                                </Button>
+                                                <Button onClick={() => setEditingResenha(null)}>
+                                                    Cancelar
+                                                </Button>
+                                            </Box>
+                                        </Box>
+                                    ) : (
+                                        <>
+                                            <Typography variant="body1" sx={{ mt: 2 }}>
+                                                {resenha.texto}
+                                            </Typography>
+                                            <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
+                                                <IconButton 
+                                                    onClick={() => setEditingResenha(resenha)}
+                                                    color="primary"
+                                                >
+                                                    <EditIcon />
+                                                </IconButton>
+                                                <IconButton 
+                                                    onClick={() => handleDelete(resenha.id)}
+                                                    color="error"
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Box>
+                                        </>
+                                    )}
                                 </CardContent>
                             </Card>
                         </Grid>

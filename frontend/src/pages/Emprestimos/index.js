@@ -46,7 +46,24 @@ const formatDate = (dateString, allowEmpty = false) => {
     const date = new Date(dateString);
     return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
 }
-
+// Adicione esta função auxiliar no início do componente
+const getStatusColor = (status) => {
+    switch (status) {
+        case 'ativo':
+            return 'success.main';
+        case 'devolvido':
+            return 'text.secondary';
+        default:
+            return 'inherit';
+    }
+};
+// Adicione esta função junto com as outras funções auxiliares
+const isEmprestimoAtrasado = (emprestimo) => {
+    if (emprestimo.status !== 'ativo') return false;
+    const hoje = new Date();
+    const dataPrevista = new Date(emprestimo.dataDevolucaoPrevista);
+    return hoje > dataPrevista;
+};
 const Emprestimos = () => {
     const [emprestimos, setEmprestimos] = useState([]);
     const [livros, setLivros] = useState([]);
@@ -302,14 +319,23 @@ const Emprestimos = () => {
                                 {getProcessedEmprestimos()
                                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                                     .map((emprestimo) => (
-                                        <TableRow key={emprestimo.id}>
+                                        <TableRow 
+                                            key={emprestimo.id}
+                                            sx={{
+                                                backgroundColor: isEmprestimoAtrasado(emprestimo) ? 'error.lighter' : 'inherit'
+                                            }}
+                                        >
                                             <TableCell>{emprestimo.livroTitulo}</TableCell>
                                             <TableCell>{emprestimo.usuarioNome}</TableCell>
                                             <TableCell>{formatDate(emprestimo.dataEmprestimo)}</TableCell>
-                                            <TableCell>{emprestimo.dataDevolucaoPrevista || '-'}</TableCell>
-                                            <TableCell>{emprestimo.status}</TableCell>
+                                            <TableCell>{formatDate(emprestimo.dataDevolucaoPrevista)}</TableCell>
                                             <TableCell>
-                                                {emprestimo.status === 'ativo' && (  // Changed from 'ATIVO' to 'ativo'
+                                                <Typography color={getStatusColor(emprestimo.status)} sx={{ textTransform: 'capitalize' }}>
+                                                    {emprestimo.status}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                {emprestimo.status === 'ativo' && (
                                                     <IconButton 
                                                         onClick={() => handleConfirmDevolucao(emprestimo.id)}
                                                         color="primary"

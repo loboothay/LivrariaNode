@@ -27,80 +27,115 @@ function Resenhas() {
         const fetchLivros = async () => {
             try {
                 const token = localStorage.getItem('token');
-                const response = await axios.get('http://localhost:3001/api/livros', {
+                const response = await axios.get('http://localhost:3000/api/livros', {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
                 });
-                
-                // Verificar e transformar os dados se necessário
-                const livrosData = response.data;
-                if (livrosData && typeof livrosData === 'object') {
-                    // Se for um objeto, converte para array
-                    const livrosArray = Array.isArray(livrosData) ? livrosData : Object.values(livrosData);
-                    console.log('Livros processados:', livrosArray);
-                    setLivros(livrosArray);
-                }
+                console.log('Resposta da API:', response.data);
+                setLivros(response.data);
             } catch (error) {
-                console.error('Erro detalhado:', error.response || error);
+                console.error('Erro ao carregar livros:', error);
             }
         };
 
         fetchLivros();
     }, []);
 
-    // Remover a função carregarLivros duplicada que não está sendo usada
-    useEffect(() => {
-        if (livroSelecionado) {
-            carregarResenhas(livroSelecionado);
-        }
-    }, [livroSelecionado]);
-
-    const carregarLivros = async () => {
-        try {
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:3001/api/livros', {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            console.log('Livros carregados:', response.data); // Para debug
-            setLivros(response.data);
-        } catch (error) {
-            console.error('Erro ao carregar livros:', error);
-        }
-    };
-
     const carregarResenhas = async (livroId) => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:3001/api/resenhas/livro/${livroId}`, {
+            const response = await axios.get(`http://localhost:3000/api/resenhas/livro/${livroId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
-            console.log('Resenhas carregadas:', response.data); // Para debug
             setResenhas(response.data);
         } catch (error) {
             console.error('Erro ao carregar resenhas:', error);
         }
     };
 
+    // Adicionar no início do componente, junto com os outros estados
+    const [usuarioLogado, setUsuarioLogado] = useState(null);
+
+    // Adicionar após o useEffect dos livros
+    // Modificar o useEffect do usuário
+    useEffect(() => {
+        const fetchUsuario = async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const nomeUsuario = localStorage.getItem('nome'); // Nome do usuário salvo no login
+                
+                console.log('Nome do usuário:', nomeUsuario);
+
+                const response = await axios.get('http://localhost:3000/api/usuarios', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                // Encontrar o usuário pelo nome
+                const usuario = response.data.find(u => u.nome === nomeUsuario);
+                if (usuario) {
+                    console.log('Usuário encontrado:', usuario);
+                    setUsuarioLogado(usuario);
+                } else {
+                    console.error('Usuário não encontrado com o nome:', nomeUsuario);
+                }
+                
+            } catch (error) {
+                console.error('Erro ao carregar usuário:', error);
+            }
+        };
+    
+        fetchUsuario();
+    }, []);
+    
+    // Modificar o handleSubmit
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            if (!novaResenha.livroId || !novaResenha.texto || !novaResenha.avaliacao) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+    
             const token = localStorage.getItem('token');
-            await axios.post('http://localhost:3001/api/resenhas', novaResenha, {
+            
+            // Debug dos dados do usuário
+            console.log('Usuário logado:', usuarioLogado);
+            
+            if (!usuarioLogado || !usuarioLogado.id) {
+                console.error('Dados do usuário:', usuarioLogado);
+                alert('Erro: Dados do usuário não disponíveis. Por favor, faça login novamente.');
+                return;
+            }
+    
+            const resenhaData = {
+                livroId: novaResenha.livroId,
+                usuarioId: usuarioLogado.id,
+                texto: novaResenha.texto.trim(),
+                avaliacao: novaResenha.avaliacao
+            };
+    
+            console.log('Enviando resenha:', resenhaData);
+    
+            const response = await axios.post('http://localhost:3000/api/resenhas', resenhaData, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
+    
+            console.log('Resposta:', response.data);
+            
             setNovaResenha({ livroId: '', texto: '', avaliacao: 0 });
             if (livroSelecionado) {
                 carregarResenhas(livroSelecionado);
             }
         } catch (error) {
-            console.error('Erro ao adicionar resenha:', error);
+            console.error('Erro ao adicionar resenha:', error.response?.data || error);
+            alert('Erro ao adicionar resenha. Por favor, tente novamente.');
         }
     };
 

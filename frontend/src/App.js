@@ -6,9 +6,10 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './components/Dashboard'; // Changed from pages to components
 import Navbar from './components/Navbar';
 import Register from './pages/Register';
+import Usuarios from './pages/Usuarios'; // Added Usuarios import
 import Livros from './pages/Livros';
 import Categorias from './pages/Categorias';
 import Emprestimos from './pages/Emprestimos';
@@ -47,6 +48,7 @@ function App() {
                 <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/" element={<Navigate to="/dashboard" />} />
                     <Route
                         path="/dashboard"
                         element={
@@ -63,7 +65,14 @@ function App() {
                             </PrivateRoute>
                         }
                     />
-                    <Route path="/" element={<Navigate to="/dashboard" />} />
+                    <Route
+                        path="/usuarios"
+                        element={
+                            <PrivateRoute>
+                                <Usuarios />
+                            </PrivateRoute>
+                        }
+                    />
                     <Route
                         path="/categorias"
                         element={

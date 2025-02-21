@@ -2,19 +2,19 @@ import React, { useState, useEffect } from 'react';
 import {
     Container,
     Typography,
+    Grid,
     Card,
     CardContent,
+    CardMedia,
     CardActions,
-    Grid,
     Button,
-    CardMedia
+    Box
 } from '@mui/material';
 import axios from 'axios';
-import DeleteIcon from '@mui/icons-material/Delete';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 
 function Favoritos() {
     const [favoritos, setFavoritos] = useState([]);
-    const usuarioId = localStorage.getItem('userId');
 
     useEffect(() => {
         carregarFavoritos();
@@ -22,17 +22,69 @@ function Favoritos() {
 
     const carregarFavoritos = async () => {
         try {
-            const response = await axios.get(`http://localhost:3001/api/favoritos/usuario/${usuarioId}`);
-            setFavoritos(response.data);
+            const token = localStorage.getItem('token');
+            const nomeUsuario = localStorage.getItem('nome'); // Nome do usuário salvo no login
+            
+            // Primeiro busca todos os usuários
+            const usuariosResponse = await axios.get('http://localhost:3000/api/usuarios', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            // Encontra o usuário pelo nome
+            const usuario = usuariosResponse.data.find(u => u.nome === nomeUsuario);
+            
+            if (!usuario) {
+                console.error('Usuário não encontrado:', nomeUsuario);
+                return;
+            }
+
+            console.log('Usuário encontrado:', usuario);
+
+            // Busca os favoritos com o ID do usuário
+            const response = await axios.get(`http://localhost:3000/api/favoritos/${usuario.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            console.log('Favoritos recebidos:', response.data);
+            setFavoritos(response.data || []);
         } catch (error) {
             console.error('Erro ao carregar favoritos:', error);
+            setFavoritos([]);
         }
     };
 
     const removerFavorito = async (livroId) => {
         try {
-            await axios.delete(`http://localhost:3001/api/favoritos/${usuarioId}/${livroId}`);
-            carregarFavoritos();
+            const token = localStorage.getItem('token');
+            const nomeUsuario = localStorage.getItem('nome');
+            
+            // Busca o ID do usuário
+            const usuariosResponse = await axios.get('http://localhost:3000/api/usuarios', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            const usuario = usuariosResponse.data.find(u => u.nome === nomeUsuario);
+            
+            if (!usuario) {
+                console.error('Usuário não encontrado');
+                return;
+            }
+
+            // Remove o favorito usando o endpoint correto
+            await axios.delete(`http://localhost:3000/api/favoritos/${usuario.id}/${livroId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            console.log('Favorito removido com sucesso');
+            carregarFavoritos(); // Recarrega a lista após remover
         } catch (error) {
             console.error('Erro ao remover favorito:', error);
         }
@@ -45,28 +97,29 @@ function Favoritos() {
             </Typography>
 
             <Grid container spacing={3}>
-                {favoritos.map((livro) => (
-                    <Grid item xs={12} sm={6} md={4} key={livro.id}>
+                {favoritos.map((favorito) => (
+                    <Grid item xs={12} sm={6} md={4} key={favorito.id}>
                         <Card>
                             <CardMedia
                                 component="img"
                                 height="200"
-                                image={livro.capa || 'https://via.placeholder.com/200x300'}
-                                alt={livro.titulo}
+                                image={'https://placehold.co/400x600'}
+                                alt={favorito.livroTitulo}
                             />
                             <CardContent>
                                 <Typography variant="h6" gutterBottom>
-                                    {livro.titulo}
+                                    {favorito.livroTitulo}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                    {livro.autor}
+                                    {favorito.livroAutor}
                                 </Typography>
                             </CardContent>
                             <CardActions>
-                                <Button 
-                                    startIcon={<DeleteIcon />}
+                                <Button
+                                    size="small"
                                     color="error"
-                                    onClick={() => removerFavorito(livro.id)}
+                                    startIcon={<DeleteIcon />}
+                                    onClick={() => removerFavorito(favorito.livroId)}
                                 >
                                     Remover dos Favoritos
                                 </Button>
@@ -74,6 +127,13 @@ function Favoritos() {
                         </Card>
                     </Grid>
                 ))}
+                {favoritos.length === 0 && (
+                    <Box sx={{ width: '100%', textAlign: 'center', mt: 4 }}>
+                        <Typography variant="h6" color="text.secondary">
+                            Você ainda não tem livros favoritos
+                        </Typography>
+                    </Box>
+                )}
             </Grid>
         </Container>
     );

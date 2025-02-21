@@ -1,5 +1,5 @@
-const { db, auth, admin } = require('../config/firebase');
-const { createUserWithEmailAndPassword, signInWithEmailAndPassword } = require('firebase/auth');
+const { db, auth } = require('../config/firebase');
+const { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } = require('firebase/auth');
 const { collection, doc, getDoc, setDoc } = require('firebase/firestore');
 const jwt = require('jsonwebtoken');
 
@@ -30,7 +30,8 @@ class AuthController {
                 criadoEm: new Date()
             };
 
-            await db.collection('usuarios').doc(userCredential.user.uid).set(userData);
+            const userDocRef = doc(db, 'usuarios', userCredential.user.uid);
+            await setDoc(userDocRef, userData);
             console.log('Dados salvos no Firestore'); // Debug log
 
             // Gerar token JWT
@@ -103,7 +104,7 @@ class AuthController {
     static async recuperarSenha(req, res) {
         try {
             const { email } = req.body;
-            await auth.sendPasswordResetEmail(email);
+            await sendPasswordResetEmail(auth, email);
             res.json({ mensagem: 'Email de recuperação enviado com sucesso' });
         } catch (error) {
             res.status(400).json({ erro: error.message });
